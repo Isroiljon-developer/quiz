@@ -418,9 +418,33 @@ io.on('connection', (socket) => {
 app.get('/', (_, res) => res.send('🛡️ Cyber Security Quiz Server is Live!'));
 app.get('/api/health', (_, res) => res.json({ status: 'ok', players: Object.keys(gameState.players).length }));
 
+// ─── KEEP-ALIVE CRON (RENDER NEVER SLEEPS) ────────────────────────────────────
+const https = require('https');
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://quiz-koo6.onrender.com';
+
+function keepAlive() {
+  if (RENDER_URL && RENDER_URL.startsWith('https://')) {
+    https.get(`${RENDER_URL}/api/health`, (res) => {
+      console.log(`[CRON] Self-ping status: ${res.statusCode} at ${new Date().toLocaleTimeString()}`);
+    }).on('error', (err) => {
+      console.error(`[CRON] Self-ping error: ${err.message}`);
+    });
+  }
+}
+
+// Har 10 daqiqada (Render 15 daqiqada uxlaydi, 10 daqiqa uni doim uyg'oq tutadi)
+setInterval(keepAlive, 10 * 60 * 1000);
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n🚀 Cyber Quiz Server running on http://localhost:${PORT}`);
   console.log(`   Admin Panel: http://localhost:5173/admin`);
   console.log(`   Player Join: http://localhost:5173/join\n`);
+  
+  // Render-da ishga tushganda dastlabki ping
+  if (process.env.RENDER_EXTERNAL_URL) {
+    console.log(`[CRON] Keep-alive yoqildi: ${RENDER_URL}`);
+    setTimeout(keepAlive, 30000);
+  }
 });
+
